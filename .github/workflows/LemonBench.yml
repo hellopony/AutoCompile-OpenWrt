@@ -23,6 +23,5 @@ on:
 
 
 jobs:
-  build:
-    runs-on: ubuntu-18.04
-      run:curl -fsSL https://ilemonrain.com/download/shell/LemonBench.sh | bash -s fast
+  runs-on:ubuntu-18.04
+     run:curl -fsSL https://ilemonrain.com/download/shell/LemonBench.sh | bash -s fast

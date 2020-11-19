@@ -11,7 +11,7 @@
 name: LemonBench
 
 on:
-  repository_dispatch:
+#  repository_dispatch:
   workflow_dispatch:
     inputs:
       ssh:
@@ -25,9 +25,4 @@ on:
 jobs:
   build:
     runs-on: ubuntu-18.04
-
-    - name: Initialization environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        curl -fsSL https://ilemonrain.com/download/shell/LemonBench.sh | bash -s fast
+      run:curl -fsSL https://ilemonrain.com/download/shell/LemonBench.sh | bash -s fast

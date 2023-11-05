@@ -213,13 +213,13 @@ jobs:
       uses: hellopony/delete-workflow-runs@main
       with:
         retain_days: 1
-        keep_minimum_runs: 66
+        keep_minimum_runs: 88
 
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@v0.2.1
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 66
+        keep_latest: 88
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -26,7 +26,7 @@ env:
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config_R4SE
-  DIY_P1_SH: diy-part1R4.sh
+  DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2R4.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true

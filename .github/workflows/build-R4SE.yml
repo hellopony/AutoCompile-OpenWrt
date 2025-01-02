@@ -86,7 +86,7 @@ jobs:
 
     - name: Free up disk space complete
       run: |
-        echo "Disk space after freeeing up complete"
+        echo "Disk space after freeing up complete"
         echo "=============================================================================="
         df -hT
         echo "=============================================================================="

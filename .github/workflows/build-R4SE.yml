@@ -46,7 +46,7 @@ jobs:
 
     - name: Before freeing up disk space
       run: |
-        echo "Before freeing up disk space"
+        echo "Currently disk space before freeing up"
         echo "=============================================================================="
         df -hT
         echo "=============================================================================="
@@ -86,7 +86,7 @@ jobs:
 
     - name: Free up disk space complete
       run: |
-        echo "Free up disk space complete"
+        echo "Disk space after freeeing up complete"
         echo "=============================================================================="
         df -hT
         echo "=============================================================================="

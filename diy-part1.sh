@@ -16,6 +16,6 @@
 
 # Add a feed source
 #sed -i '$a src-git lienol https://github.com/Lienol/openwrt-package' feeds.conf.default
-echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
+#echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
 echo 'src-git openappfilter https://github.com/destan19/openappfilter.git' >>feeds.conf.default
 #echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default

@@ -85,6 +85,35 @@ jobs:
         echo "硬盘详情："
         df -Th
 
+
+    - name: Select workdir (prefer /mnt when split disk)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Disk layout:"
+        df -hT
+        echo "----------------------------------------"
+
+        WORKDIR="$GITHUB_WORKSPACE"
+
+        if df -P /mnt >/dev/null 2>&1; then
+          root_avail=$(df -Pk / | awk 'NR==2{print $4}')
+          mnt_avail=$(df -Pk /mnt | awk 'NR==2{print $4}')
+          echo "root_avail_kb=$root_avail mnt_avail_kb=$mnt_avail"
+
+          # /mnt 可用空间明显更大 => 用 /mnt
+          if [ "${mnt_avail:-0}" -gt "${root_avail:-0}" ]; then
+            sudo mkdir -p /mnt/work
+            sudo chown -R "$USER":"$USER" /mnt/work
+            WORKDIR="/mnt/work"
+          fi
+        fi
+
+        echo "WORKDIR=$WORKDIR" >> $GITHUB_ENV
+        echo "Using WORKDIR=$WORKDIR"
+
+
+
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -107,24 +136,27 @@ jobs:
     - name: Clone source code
       working-directory: ./
       run: |
-        df -hT $PWD
+        cd "$WORKDIR"
+        df -hT .
         git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
 
     - name: Load custom feeds
       run: |
+        cd "$WORKDIR"
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: cd "$WORKDIR/openwrt" && ./scripts/feeds update -a
 
     - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
+      run: cd "$WORKDIR/openwrt" && ./scripts/feeds install -a
 
     - name: Load custom configuration
       run: |
+        cd "$WORKDIR"
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P2_SH
@@ -141,7 +173,7 @@ jobs:
     - name: Download package
       id: package
       run: |
-        cd openwrt
+        cd "$WORKDIR/openwrt"
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -150,7 +182,7 @@ jobs:
     - name: Compile the firmware
       id: compile
       run: |
-        cd openwrt
+        cd "$WORKDIR/openwrt"
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
@@ -167,13 +199,13 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
+        path: ${{ env.WORKDIR }}/openwrt/bin
 
     - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
+        cd "$WORKDIR/openwrt/bin/targets/*/*"
         rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT

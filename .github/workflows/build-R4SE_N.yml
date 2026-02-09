@@ -131,7 +131,9 @@ jobs:
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
-        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+        sudo chown -R $USER:$GROUPS "$GITHUB_WORKSPACE" || true
+        [ -n "${WORKDIR:-}" ] && sudo chown -R $USER:$GROUPS "$WORKDIR" || true
+
 
     - name: Clone source code
       working-directory: ./

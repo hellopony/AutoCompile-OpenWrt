@@ -109,6 +109,11 @@ jobs:
           fi
         fi
 
+        if [ "$WORKDIR" = "/mnt/work" ]; then
+          echo "Sync repo to /mnt/work ..."
+          rsync -a --delete "$GITHUB_WORKSPACE"/ /mnt/work/
+        fi
+        
         echo "WORKDIR=$WORKDIR" >> $GITHUB_ENV
         echo "Using WORKDIR=$WORKDIR"
 

@@ -149,11 +149,14 @@ jobs:
 
     - name: Load custom feeds
       run: |
-        cd "$WORKDIR"
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+           cd "$WORKDIR"
+           if [ -e "$WORKDIR/$FEEDS_CONF" ]; then
+              mv "$WORKDIR/$FEEDS_CONF" "$WORKDIR/openwrt/feeds.conf.default"
+           fi
+
+           chmod +x "$WORKDIR/$DIY_P1_SH"
+           cd "$WORKDIR/openwrt"
+           "$WORKDIR/$DIY_P1_SH"
 
     - name: Update feeds
       run: cd "$WORKDIR/openwrt" && ./scripts/feeds update -a
@@ -163,12 +166,13 @@ jobs:
 
     - name: Load custom configuration
       run: |
-        cd "$WORKDIR"
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+           cd "$WORKDIR"
+           [ -e "$WORKDIR/files" ] && mv "$WORKDIR/files" "$WORKDIR/openwrt/files"
+           [ -e "$WORKDIR/$CONFIG_FILE" ] && mv "$WORKDIR/$CONFIG_FILE" "$WORKDIR/openwrt/.config"
+
+           chmod +x "$WORKDIR/$DIY_P2_SH"
+           cd "$WORKDIR/openwrt"
+           "$WORKDIR/$DIY_P2_SH"
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0

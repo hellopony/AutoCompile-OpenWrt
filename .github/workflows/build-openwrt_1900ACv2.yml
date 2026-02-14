@@ -215,7 +215,7 @@ jobs:
       uses: nikhilbadyal/ghaction-rm-releases@v0.7.0
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RELEASE_PATTERN: "Build*"
+        RELEASE_PATTERN: "linksys_wrt1900ac-v2*"
         RELEASES_TO_KEEP: 168
         DELETE_TAGS: true
  

@@ -202,12 +202,20 @@ jobs:
         retain_days: 1
         keep_minimum_runs: 168
 
-    - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@v0.2.1
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+    #- name: Remove old Releases
+    #  uses: dev-drprasad/delete-older-releases@v0.2.1
+    #  if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+    #  with:
+    #    keep_latest: 168
+    #    delete_tags: true
+    #  env:
+    #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Delete Older Releases
+      uses: nikhilbadyal/ghaction-rm-releases@v0.7.0
       with:
-        keep_latest: 168
-        delete_tags: true
-      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        RELEASE_PATTERN: "Build*"
+        RELEASES_TO_KEEP: 168
+        DELETE_TAGS: true
+ 

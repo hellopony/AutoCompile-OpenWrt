@@ -216,6 +216,6 @@ jobs:
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         RELEASE_PATTERN: "linksys_wrt1900ac-v2*"
-        RELEASES_TO_KEEP: 168
+        RELEASES_TO_KEEP: 246
         DELETE_TAGS: true
  

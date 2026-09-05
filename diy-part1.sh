@@ -19,3 +19,11 @@
 #echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
 echo 'src-git openappfilter https://github.com/destan19/openappfilter.git' >>feeds.conf.default
 #echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+
+# Temporary workaround for LEDE mvebu IEI WT61P803 duplicate files
+echo "Applying mvebu IEI Puzzle duplicate-file workaround..."
+
+rm -f target/linux/mvebu/files/drivers/mfd/iei-wt61p803-puzzle.c
+rm -f target/linux/mvebu/files/drivers/hwmon/iei-wt61p803-puzzle-hwmon.c
+rm -f target/linux/mvebu/files/drivers/leds/leds-iei-wt61p803-puzzle.c
+rm -f target/linux/mvebu/files/include/linux/mfd/iei-wt61p803-puzzle.h

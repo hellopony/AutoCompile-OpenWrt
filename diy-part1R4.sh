@@ -14,6 +14,10 @@
 #sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
 #sed -i 's/#src-git helloworld/src-git helloworld/g' ./feeds.conf.default
 
+# Force SSR Plus / helloworld feed independently of upstream LEDE settings
+sed -i -E '/^[[:space:]#]*(src-git|src-git-full)[[:space:]]+helloworld([[:space:]]|$)/d' feeds.conf.default
+echo 'src-git helloworld https://github.com/fw876/helloworld.git' >> feeds.conf.default
+
 # Add a feed source
 #sed -i '$a src-git lienol https://github.com/Lienol/openwrt-package' feeds.conf.default
 #echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default

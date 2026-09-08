@@ -65,7 +65,7 @@ jobs:
         dotnet: true
         haskell: true
         large-packages: true
-        swap-storage: true
+        swap-storage: false
 
         
     - name: Checking Server Configuration

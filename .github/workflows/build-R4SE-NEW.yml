@@ -1,0 +1,347 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+# MIT License
+#
+
+name: Build OpenWrt_R4SE
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: 0 5 * * 3,0
+
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: master
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: .config_R4SE_NO
+  DIY_P1_SH: diy-part1R4.sh
+  DIY_P2_SH: diy-part2R4.sh
+  UPLOAD_BIN_DIR: false
+  UPLOAD_FIRMWARE: true
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_WETRANSFER: false
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Before freeing up disk space
+      run: |
+        echo "Currently disk space before freeing up"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Free Disk Space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        swap-storage: true
+
+    - name: Create small swap
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "===== Before creating small swap ====="
+        free -h
+        swapon --show || true
+        df -hT /
+
+        if [ -z "$(swapon --show --noheadings 2>/dev/null)" ]; then
+          sudo rm -f /swapfile
+          sudo fallocate -l 1G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+        fi
+
+        echo "===== After creating small swap ====="
+        free -h
+        swapon --show || true
+        df -hT /
+
+    - name: Checking Server Configuration
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo "已知CPU型号（降序）：AMD-EPYC-7763,8370C,8272CL,8171M,E5系列"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量:$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "--------------------------内存信息--------------------------"
+        sudo lshw -short -C memory | grep GiB || true
+        free -h
+        echo "--------------------------Swap信息--------------------------"
+        swapon --show || true
+        echo "--------------------------硬盘信息--------------------------"
+        df -Th
+
+    - name: Select workdir (prefer /mnt when split disk)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Disk layout:"
+        df -hT
+        echo "----------------------------------------"
+
+        WORKDIR="$GITHUB_WORKSPACE"
+
+        if df -P /mnt >/dev/null 2>&1; then
+          root_avail=$(df -Pk / | awk 'NR==2{print $4}')
+          mnt_avail=$(df -Pk /mnt | awk 'NR==2{print $4}')
+          echo "root_avail_kb=$root_avail mnt_avail_kb=$mnt_avail"
+
+          if [ "${mnt_avail:-0}" -gt "${root_avail:-0}" ]; then
+            sudo mkdir -p /mnt/work
+            sudo chown -R "$USER":"$(id -gn)" /mnt/work
+            WORKDIR="/mnt/work"
+          fi
+        fi
+
+        if [ "$WORKDIR" = "/mnt/work" ]; then
+          echo "Sync repo to /mnt/work ..."
+          rsync -a --delete "$GITHUB_WORKSPACE"/ /mnt/work/
+        fi
+
+        echo "WORKDIR=$WORKDIR" >> "$GITHUB_ENV"
+        echo "Using WORKDIR=$WORKDIR"
+
+        echo "===== Resource status after workdir selection ====="
+        df -hT
+        free -h
+        swapon --show || true
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        sudo -E timeout 20m apt-get update
+        sudo -E timeout 40m apt-get install -y \
+          ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext \
+          gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
+          libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+          libncurses-dev libreadline-dev libssl-dev libtool lrzsz \
+          genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf \
+          python3 python3-pyelftools python3-setuptools libpython3-dev \
+          qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs \
+          upx-ucl unzip vim wget xmlto xxd zlib1g-dev llvm clang
+
+        gcc --version
+        g++ --version
+        clang --version
+        clang++ --version
+
+        sudo rm -rf \
+          /usr/local/lib/android \
+          /opt/ghc \
+          /usr/share/dotnet \
+          /usr/local/graalvm \
+          /usr/local/.ghcup \
+          /usr/local/share/powershell \
+          /usr/local/share/chromium \
+          /usr/local/lib/node_modules || true
+
+        sudo -E apt-get clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo chown -R "$USER":"$(id -gn)" "$GITHUB_WORKSPACE" || true
+        [ -n "${WORKDIR:-}" ] && sudo chown -R "$USER":"$(id -gn)" "$WORKDIR" || true
+
+        echo "===== Resource status after initialization ====="
+        df -hT
+        free -h
+        swapon --show || true
+
+    - name: Clone source code
+      working-directory: ./
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "$WORKDIR"
+        df -hT .
+
+        git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+
+        cd "$WORKDIR/openwrt"
+        echo "========================================"
+        echo "Current LEDE commit:"
+        git rev-parse HEAD
+        git log -1 --oneline
+        git log -1 --format='Commit date: %ci'
+        echo "========================================"
+        echo "LEDE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+    - name: Load custom feeds
+      run: |
+        cd "$WORKDIR"
+        if [ -e "$WORKDIR/$FEEDS_CONF" ]; then
+          mv "$WORKDIR/$FEEDS_CONF" "$WORKDIR/openwrt/feeds.conf.default"
+        fi
+        chmod +x "$WORKDIR/$DIY_P1_SH"
+        cd "$WORKDIR/openwrt"
+        "$WORKDIR/$DIY_P1_SH"
+
+    - name: Update feeds
+      run: cd "$WORKDIR/openwrt" && ./scripts/feeds update -a
+
+    - name: Install feeds
+      run: cd "$WORKDIR/openwrt" && ./scripts/feeds install -a
+
+    - name: Load custom configuration
+      run: |
+        cd "$WORKDIR"
+        [ -e "$WORKDIR/files" ] && mv "$WORKDIR/files" "$WORKDIR/openwrt/files"
+        [ -e "$WORKDIR/$CONFIG_FILE" ] && mv "$WORKDIR/$CONFIG_FILE" "$WORKDIR/openwrt/.config"
+
+        chmod +x "$WORKDIR/$DIY_P2_SH"
+        cd "$WORKDIR/openwrt"
+        "$WORKDIR/$DIY_P2_SH"
+
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || contains(github.event.action, 'ssh')
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+    - name: Download package
+      id: package
+      run: |
+        cd "$WORKDIR/openwrt"
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+        echo "===== Resource status after download ====="
+        df -hT
+        free -h
+        swapon --show || true
+
+    - name: Compile the firmware
+      id: compile
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "$WORKDIR/openwrt"
+
+        echo "========================================"
+        echo "LEDE commit: ${LEDE_COMMIT:-unknown}"
+        echo "CPU threads: $(nproc)"
+        echo "===== Memory ====="
+        free -h
+        echo "===== Swap ====="
+        swapon --show || true
+        echo "===== Disk ====="
+        df -hT
+        echo "========================================"
+
+        make -j"$(nproc)"
+
+        echo "status=success" >> "$GITHUB_OUTPUT"
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> "$GITHUB_ENV"
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> "$GITHUB_ENV"
+
+    - name: Check space usage
+      if: (!cancelled())
+      run: |
+        df -hT
+        free -h
+        swapon --show || true
+
+    - name: Upload bin directory
+      uses: actions/upload-artifact@v4
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.WORKDIR }}/openwrt/bin
+
+    - name: Organize files
+      id: organize
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd "$WORKDIR"/openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
+        echo "status=success" >> "$GITHUB_OUTPUT"
+
+    - name: Upload firmware directory
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: OpenWrt_firmware_${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Upload firmware to cowtransfer
+      id: cowtransfer
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
+        echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
+        echo "url=$(cat cowtransfer.log | grep https | cut -f3 -d" ")" >> "$GITHUB_OUTPUT"
+
+    - name: Upload firmware to WeTransfer
+      id: wetransfer
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_WETRANSFER == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wetransfer.log
+        echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
+        echo "url=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> "$GITHUB_OUTPUT"
+
+    - name: Generate release tag
+      id: tag
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> "$GITHUB_OUTPUT"
+        touch release.txt
+        [ "$UPLOAD_COWTRANSFER" = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt || true
+        [ "$UPLOAD_WETRANSFER" = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt || true
+        echo "status=success" >> "$GITHUB_OUTPUT"
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v1
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.DEVICE_NAME }}_${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
+
+    - name: Delete workflow runs
+      uses: hellopony/delete-workflow-runs@main
+      with:
+        retain_days: 1
+        keep_minimum_runs: 168
+
+    - name: Remove old Releases
+      uses: dev-drprasad/delete-older-releases@v0.3.4
+      if: steps.tag.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      with:
+        keep_latest: 168
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -118,38 +118,26 @@ jobs:
         echo "Using WORKDIR=$WORKDIR"
 
 
-
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt-get -qq update -y
-        sudo -E apt-get -qq install -y \
-          ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-          bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext \
-          gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
-          libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
-          libncurses-dev libreadline-dev libssl-dev libtool lrzsz \
-          genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf \
-          python3 python3-pyelftools python3-setuptools libpython3-dev \
-          qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs \
-          upx-ucl unzip vim wget xmlto xxd zlib1g-dev llvm clang
-
-        gcc --version
-        g++ --version
-        clang --version
-        clang++ --version
-
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/local/lib/android /opt/ghc \
-          /usr/share/dotnet /usr/local/graalvm /usr/local/.ghcup \
-          /usr/local/share/powershell /usr/local/share/chromium \
-          /usr/local/lib/node_modules
-
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+        bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+        git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+        libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+        mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools \
+        libpython3-dev qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip \
+        vim wget xmlto xxd zlib1g-dev llvm clang python3-setuptools
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/local/lib/android /opt/ghc /usr/share/dotnet /usr/local/graalvm /usr/local/.ghcup \
+        /usr/local/share/powershell /usr/local/share/chromium /usr/local/lib/node_modules
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         sudo chown -R $USER:$GROUPS "$GITHUB_WORKSPACE" || true
         [ -n "${WORKDIR:-}" ] && sudo chown -R $USER:$GROUPS "$WORKDIR" || true
+
 
     - name: Clone source code
       working-directory: ./

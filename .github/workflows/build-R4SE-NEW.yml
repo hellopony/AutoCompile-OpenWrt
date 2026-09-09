@@ -255,9 +255,25 @@ jobs:
         echo "===== Disk ====="
         df -hT
         echo "========================================"
+        (
+         while true; do
+           echo "===== RESOURCE WATCH $(date) ====="
+           free -h
+           swapon --show || true
+           df -hT /
+           echo
+           sleep 60
+         done
+        ) &
+        MONITOR_PID=$!
+
+        trap 'kill $MONITOR_PID 2>/dev/null || true' EXIT
 
         make -j"$(nproc)"
 
+        kill $MONITOR_PID 2>/dev/null || true
+        trap - EXIT
+        
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> "$GITHUB_ENV"

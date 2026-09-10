@@ -17,3 +17,12 @@ grep 192.168 package/base-files/files/bin/config_generate
 sed -i 's/192.168.1.1/192.168.158.1/g' package/base-files/files/bin/config_generate
 echo "after:"
 grep 192.168 package/base-files/files/bin/config_generate
+
+
+# Remove duplicate OpenAppFilter from coolsnowwolf packages feed
+echo "Removing duplicate open-app-filter from packages feed..."
+
+rm -rf package/feeds/packages/open-app-filter
+
+echo "Remaining OpenAppFilter packages:"
+find package/feeds -maxdepth 3 -iname '*oaf*' -o -iname '*open-app-filter*'

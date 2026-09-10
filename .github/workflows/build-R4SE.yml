@@ -189,26 +189,6 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Test GN host compile
-      run: |
-        cd "$WORKDIR/openwrt"
-
-        echo "===== GN package ====="
-        grep -E 'PKG_SOURCE_DATE|PKG_SOURCE_VERSION' feeds/helloworld/gn/Makefile
-
-        echo "===== GN patches ====="
-        ls -l feeds/helloworld/gn/patches/
-
-        echo "===== Build OpenWrt host Ninja first ====="
-        make tools/ninja/compile -j1 V=s
-
-        echo "===== Check staged Ninja ====="
-        ls -l staging_dir/host/bin/ninja
-        staging_dir/host/bin/ninja --version
-
-        echo "===== Compile GN ====="
-        make package/feeds/helloworld/gn/host/compile -j1 V=s
-
     - name: Compile the firmware
       id: compile
       run: |
